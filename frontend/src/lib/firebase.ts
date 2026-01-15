@@ -1,5 +1,5 @@
 import { initializeApp } from "firebase/app";
-import { getAuth } from "firebase/auth";
+import { getAuth, browserSessionPersistence, setPersistence } from "firebase/auth";
 
 const firebaseConfig = {
     apiKey: "AIzaSyB7iZxA5_tZdzli_iJJAh0hh7LCX1Dz2B8",
@@ -13,3 +13,8 @@ const firebaseConfig = {
 
 const app = initializeApp(firebaseConfig);
 export const auth = getAuth(app);
+
+// Set session persistence so that each tab has independent auth state
+setPersistence(auth, browserSessionPersistence).catch((error) => {
+    console.error("Failed to set auth persistence:", error);
+});

@@ -23,7 +23,7 @@ export default function LoginPage() {
 
     const handleAuthSuccess = async (user: User) => {
         try {
-            const token = await user.getIdToken();
+            const token = await user.getIdToken(true); // Force refresh
             console.log("Token retrieved, fetching /auth/me...");
             const response = await api(token).getMe();
             console.log("Backend /auth/me response:", response);
@@ -59,7 +59,7 @@ export default function LoginPage() {
         e.preventDefault();
         setError("");
 
-        // Validate passwords match during registration
+        // Validate passwords match during the registration
         if (isRegistering && password !== confirmPassword) {
             setError("Passwords do not match");
             return;

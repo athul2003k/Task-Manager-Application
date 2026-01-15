@@ -22,10 +22,9 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
             if (firebaseUser) {
                 setUser(firebaseUser);
-                // Force refresh to get latest custom claims (including admin role)
+                // Force refresh to get the latest custom claims (including admin role)
                 const idToken = await firebaseUser.getIdToken(true);
                 setToken(idToken);
-                document.cookie = `token=${idToken}; path=/`;
 
                 // Fetch backend user details
                 try {
@@ -39,7 +38,6 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
                 setUser(null);
                 setToken(null);
                 setBackendUser(null);
-                document.cookie = "token=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT";
             }
         });
 
