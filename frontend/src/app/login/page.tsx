@@ -17,6 +17,7 @@ export default function LoginPage() {
     const router = useRouter();
     const [email, setEmail] = useState("");
     const [password, setPassword] = useState("");
+    const [confirmPassword, setConfirmPassword] = useState("");
     const [isRegistering, setIsRegistering] = useState(false);
     const [error, setError] = useState("");
 
@@ -57,6 +58,13 @@ export default function LoginPage() {
     const handleEmailAuth = async (e: React.FormEvent) => {
         e.preventDefault();
         setError("");
+
+        // Validate passwords match during registration
+        if (isRegistering && password !== confirmPassword) {
+            setError("Passwords do not match");
+            return;
+        }
+
         try {
             let userCredential;
             if (isRegistering) {
@@ -121,6 +129,18 @@ export default function LoginPage() {
                             required
                         />
                     </div>
+                    {isRegistering && (
+                        <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-1">Confirm Password</label>
+                            <input
+                                type="password"
+                                value={confirmPassword}
+                                onChange={(e) => setConfirmPassword(e.target.value)}
+                                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-gray-900"
+                                required
+                            />
+                        </div>
+                    )}
                     <button
                         type="submit"
                         className="w-full bg-blue-600 text-white py-2.5 rounded-lg hover:bg-blue-700 transition-colors font-medium"
@@ -132,7 +152,11 @@ export default function LoginPage() {
                 <p className="mt-4 text-center text-sm text-gray-600">
                     {isRegistering ? "Already have an account?" : "Don't have an account?"}{" "}
                     <button
-                        onClick={() => setIsRegistering(!isRegistering)}
+                        onClick={() => {
+                            setIsRegistering(!isRegistering);
+                            setConfirmPassword("");
+                            setError("");
+                        }}
                         className="text-blue-600 hover:text-blue-700 font-medium"
                     >
                         {isRegistering ? "Sign In" : "Sign Up"}
