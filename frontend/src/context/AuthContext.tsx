@@ -1,0 +1,56 @@
+"use client";
+
+import { onAuthStateChanged, User } from "firebase/auth";
+import { createContext, useContext, useEffect, useState, ReactNode } from "react";
+import { auth } from "@/lib/firebase";
+import { api } from "@/lib/api";
+
+interface AuthContextType {
+    user: User | null;
+    token: string | null;
+    backendUser: unknown | null; // Use unknown instead of any
+}
+
+const AuthContext = createContext<AuthContextType>({ user: null, token: null, backendUser: null });
+
+export const AuthProvider = ({ children }: { children: ReactNode }) => {
+    const [user, setUser] = useState<User | null>(null);
+    const [token, setToken] = useState<string | null>(null);
+    const [backendUser, setBackendUser] = useState<unknown | null>(null);
+
+    useEffect(() => {
+        const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
+            if (firebaseUser) {
+                setUser(firebaseUser);
+                // Force refresh to get latest custom claims (including admin role)
+                const idToken = await firebaseUser.getIdToken(true);
+                setToken(idToken);
+                document.cookie = `token=${idToken}; path=/`;
+
+                // Fetch backend user details
+                try {
+                    const me = await api(idToken).getMe();
+                    console.log("AuthContext: Fetched backend user:", me);
+                    setBackendUser(me);
+                } catch (err) {
+                    console.error("AuthContext: Failed to fetch backend user", err);
+                }
+            } else {
+                setUser(null);
+                setToken(null);
+                setBackendUser(null);
+                document.cookie = "token=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT";
+            }
+        });
+
+        return () => unsubscribe();
+    }, []);
+
+    return (
+        <AuthContext.Provider value={{ user, token, backendUser }}>
+            {children}
+        </AuthContext.Provider>
+    );
+};
+
+export const useAuth = () => useContext(AuthContext);
