@@ -52,56 +52,54 @@ export default function AdminPage() {
         }
     }, [token]);
     // Socket listeners for real-time updates (ADMIN)
-useEffect(() => {
-    if (!token) return;
+    useEffect(() => {
+        if (!token) return;
 
-    const handleTaskCreated = (data: { task: Task }) => {
-        console.log("Socket: Task created", data.task);
-        setTasks(prev => [...prev, data.task]);
-    };
+        const handleTaskCreated = (data: { task: Task }) => {
+            console.log("Socket: Task created", data.task);
+            setTasks(prev => {
+                // Prevent duplicates if admin receives event from both rooms
+                if (prev.some(t => t._id === data.task._id)) {
+                    return prev;
+                }
+                return [...prev, data.task];
+            });
+        };
 
-    const handleTaskUpdated = (data: { task: Task }) => {
-        console.log("Socket: Task updated", data.task);
-        setTasks(prev =>
-            prev.map(t => t._id === data.task._id ? data.task : t)
-        );
-    };
+        const handleTaskUpdated = (data: { task: Task }) => {
+            console.log("Socket: Task updated", data.task);
+            setTasks(prev =>
+                prev.map(t => t._id === data.task._id ? data.task : t)
+            );
+        };
 
-    const handleTaskDeleted = (data: { taskId: string }) => {
-        console.log("Socket: Task deleted", data.taskId);
-        setTasks(prev => prev.filter(t => t._id !== data.taskId));
-    };
+        const handleTaskDeleted = (data: { taskId: string }) => {
+            console.log("Socket: Task deleted", data.taskId);
+            setTasks(prev => prev.filter(t => t._id !== data.taskId));
+        };
 
-    socket.on("taskCreated", handleTaskCreated);
-    socket.on("taskUpdated", handleTaskUpdated);
-    socket.on("taskDeleted", handleTaskDeleted);
+        socket.on("taskCreated", handleTaskCreated);
+        socket.on("taskUpdated", handleTaskUpdated);
+        socket.on("taskDeleted", handleTaskDeleted);
 
-    return () => {
-        socket.off("taskCreated", handleTaskCreated);
-        socket.off("taskUpdated", handleTaskUpdated);
-        socket.off("taskDeleted", handleTaskDeleted);
-    };
-}, [token]);
+        return () => {
+            socket.off("taskCreated", handleTaskCreated);
+            socket.off("taskUpdated", handleTaskUpdated);
+            socket.off("taskDeleted", handleTaskDeleted);
+        };
+    }, [token]);
 
 
     const handleCreateTask = async (data: { title: string; description: string; assignedTo: string; deadline?: string }) => {
         if (token) {
             try {
-                const assignedUser = users.find(u => u._id === data.assignedTo);
-
-                const createdTask = await api(token).createTask({
+                await api(token).createTask({
                     title: data.title,
                     description: data.description,
                     assignedTo: data.assignedTo,
                     deadline: data.deadline
                 });
-
-                const newTaskWithUser = {
-                    ...createdTask,
-                    assignedTo: assignedUser ? { name: assignedUser.name, email: assignedUser.email } : undefined,
-                };
-
-                setTasks(prev => [...prev, newTaskWithUser]);
+                // Socket event will handle adding the task to state
             } catch (e) {
                 console.error("Create failed", e);
                 alert("Failed to create task");
@@ -116,15 +114,12 @@ useEffect(() => {
 
         if (!token) return;
 
-        const originalTasks = [...tasks];
-        setTasks(prev => prev.filter(t => t._id !== taskId));
-
         try {
             await api(token).deleteTask(taskId);
+            // Socket event will handle removing the task from state
         } catch (e) {
             console.error("Delete failed", e);
             alert("Failed to delete task");
-            setTasks(originalTasks);
         }
     };
 
@@ -136,15 +131,12 @@ useEffect(() => {
     const handleUpdateStatus = async (taskId: string, newStatus: string) => {
         if (!token) return;
 
-        const originalTasks = [...tasks];
-        setTasks(prev => prev.map(t => t._id === taskId ? { ...t, status: newStatus } : t));
-
         try {
             await api(token).updateTaskStatus(taskId, newStatus);
+            // Socket event will handle updating the task in state
         } catch (e) {
             console.error("Status update failed", e);
             alert("Failed to update status");
-            setTasks(originalTasks);
         }
     };
 

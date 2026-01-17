@@ -45,34 +45,40 @@ export default function DashboardPage() {
     }, [token]);
 
     // Socket listeners for real-time updates
-useEffect(() => {
-    if (!token) return;
-    // Handler functions
-    const handleTaskCreated = (data: { task: Task }) => {
-        console.log("Socket: Task created", data.task);
-        setTasks(prev => [...prev, data.task]);
-    };
-    const handleTaskUpdated = (data: { task: Task }) => {
-        console.log("Socket: Task updated", data.task);
-        setTasks(prev => 
-            prev.map(t => t._id === data.task._id ? data.task : t)
-        );
-    };
-    const handleTaskDeleted = (data: { taskId: string }) => {
-        console.log("Socket: Task deleted", data.taskId);
-        setTasks(prev => prev.filter(t => t._id !== data.taskId));
-    };
-    // Register listeners
-    socket.on("taskCreated", handleTaskCreated);
-    socket.on("taskUpdated", handleTaskUpdated);
-    socket.on("taskDeleted", handleTaskDeleted);
-    // Cleanup function - CRITICAL to prevent memory leaks
-    return () => {
-        socket.off("taskCreated", handleTaskCreated);
-        socket.off("taskUpdated", handleTaskUpdated);
-        socket.off("taskDeleted", handleTaskDeleted);
-    };
-}, [token]);
+    useEffect(() => {
+        if (!token) return;
+        // Handler functions
+        const handleTaskCreated = (data: { task: Task }) => {
+            console.log("Socket: Task created", data.task);
+            setTasks(prev => {
+                // Prevent duplicates
+                if (prev.some(t => t._id === data.task._id)) {
+                    return prev;
+                }
+                return [...prev, data.task];
+            });
+        };
+        const handleTaskUpdated = (data: { task: Task }) => {
+            console.log("Socket: Task updated", data.task);
+            setTasks(prev =>
+                prev.map(t => t._id === data.task._id ? data.task : t)
+            );
+        };
+        const handleTaskDeleted = (data: { taskId: string }) => {
+            console.log("Socket: Task deleted", data.taskId);
+            setTasks(prev => prev.filter(t => t._id !== data.taskId));
+        };
+        // Register listeners
+        socket.on("taskCreated", handleTaskCreated);
+        socket.on("taskUpdated", handleTaskUpdated);
+        socket.on("taskDeleted", handleTaskDeleted);
+        // Cleanup function - CRITICAL to prevent memory leaks
+        return () => {
+            socket.off("taskCreated", handleTaskCreated);
+            socket.off("taskUpdated", handleTaskUpdated);
+            socket.off("taskDeleted", handleTaskDeleted);
+        };
+    }, [token]);
 
     const handleStatusChange = async (taskId: string, newStatus: string) => {
         if (!token) return;
