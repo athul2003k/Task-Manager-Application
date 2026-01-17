@@ -8,6 +8,7 @@ import TaskDetailsModal from "@/components/TaskDetailsModal";
 import { useAuth } from "@/context/AuthContext";
 import { api } from "@/lib/api";
 import { auth } from "@/lib/firebase";
+import socket from "@/socket";
 
 interface Task {
     _id: string;
@@ -50,6 +51,38 @@ export default function AdminPage() {
             });
         }
     }, [token]);
+    // Socket listeners for real-time updates (ADMIN)
+useEffect(() => {
+    if (!token) return;
+
+    const handleTaskCreated = (data: { task: Task }) => {
+        console.log("Socket: Task created", data.task);
+        setTasks(prev => [...prev, data.task]);
+    };
+
+    const handleTaskUpdated = (data: { task: Task }) => {
+        console.log("Socket: Task updated", data.task);
+        setTasks(prev =>
+            prev.map(t => t._id === data.task._id ? data.task : t)
+        );
+    };
+
+    const handleTaskDeleted = (data: { taskId: string }) => {
+        console.log("Socket: Task deleted", data.taskId);
+        setTasks(prev => prev.filter(t => t._id !== data.taskId));
+    };
+
+    socket.on("taskCreated", handleTaskCreated);
+    socket.on("taskUpdated", handleTaskUpdated);
+    socket.on("taskDeleted", handleTaskDeleted);
+
+    return () => {
+        socket.off("taskCreated", handleTaskCreated);
+        socket.off("taskUpdated", handleTaskUpdated);
+        socket.off("taskDeleted", handleTaskDeleted);
+    };
+}, [token]);
+
 
     const handleCreateTask = async (data: { title: string; description: string; assignedTo: string; deadline?: string }) => {
         if (token) {

@@ -1,0 +1,44 @@
+version: "3.9"
+
+services:
+  mongo:
+    image: mongo:6
+    container_name: task_mongo
+    ports:
+      - "27017:27017"   # external port mapping
+    volumes:
+      - mongo_data:/data/db
+
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: task_backend
+    command: node src/server.js
+    ports:
+      - "4000:4000"    # external port for backend
+    environment:
+      - MONGO_URI=mongodb://mongo:27017/taskdb
+    volumes:
+      - ./backend:/usr/src/app
+      - ./backend/logs:/usr/src/app/logs
+    depends_on:
+      - mongo
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: task_frontend
+    ports:
+      - "3000:3000"    # external port for Next.js
+    environment:
+      - NEXT_PUBLIC_API_URL=http://localhost:4000
+    volumes:
+      - ./frontend:/usr/src/app
+    command: npm run dev
+    depends_on:
+      - backend
+
+volumes:
+  mongo_data:

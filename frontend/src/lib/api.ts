@@ -1,4 +1,7 @@
-const BASE_URL = "http://localhost:4000";
+// Use backend container name for server-side requests in Docker, localhost for browser
+const BASE_URL = typeof window === 'undefined'
+    ? (process.env.NEXT_PUBLIC_API_URL || "http://backend:4000")
+    : (process.env.NEXT_PUBLIC_API_URL || "http://localhost:4000");
 
 const handleResponse = async (res: Response) => {
     if (!res.ok) {

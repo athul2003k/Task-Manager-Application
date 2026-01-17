@@ -4,6 +4,7 @@ import { onAuthStateChanged, User } from "firebase/auth";
 import { createContext, useContext, useEffect, useState, ReactNode } from "react";
 import { auth } from "@/lib/firebase";
 import { api } from "@/lib/api";
+import socket from "@/socket";
 
 interface AuthContextType {
     user: User | null;
@@ -22,15 +23,24 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
             if (firebaseUser) {
                 setUser(firebaseUser);
-                // Force refresh to get the latest custom claims (including admin role)
                 const idToken = await firebaseUser.getIdToken(true);
                 setToken(idToken);
-
                 // Fetch backend user details
                 try {
                     const me = await api(idToken).getMe();
                     console.log("AuthContext: Fetched backend user:", me);
                     setBackendUser(me);
+
+                    // 🆕 CONNECT SOCKET AFTER LOGIN
+                    if (!socket.connected) {
+                        socket.connect();
+                        // Join user-specific room and admin room if applicable
+                        socket.emit("join", {
+                            userId: (me as any).id,
+                            role: (me as any).role
+                        });
+                        console.log("Socket connected and joined room");
+                    }
                 } catch (err) {
                     console.error("AuthContext: Failed to fetch backend user", err);
                 }
@@ -38,10 +48,21 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
                 setUser(null);
                 setToken(null);
                 setBackendUser(null);
+
+                // 🆕 DISCONNECT SOCKET ON LOGOUT
+                if (socket.connected) {
+                    socket.disconnect();
+                    console.log("Socket disconnected");
+                }
             }
         });
-
-        return () => unsubscribe();
+        // 🆕 CLEANUP ON UNMOUNT
+        return () => {
+            unsubscribe();
+            if (socket.connected) {
+                socket.disconnect();
+            }
+        };
     }, []);
 
     return (
